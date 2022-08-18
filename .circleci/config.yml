@@ -1,13 +1,24 @@
 version: 2.1
 # Use a package of configuration called an orb.
+
 orbs:
   # Choose either one of the orbs below
   # welcome: circleci/welcome-orb@0.4.1
   aws-cli: circleci/aws-cli@2.0.3
-# Define the jobs we want to run for this project
+
+commands:
+   delete_environment:
+     steps:
+       - run:
+           name: Destroy environment
+           # ${CIRCLE_WORKFLOW_ID} is a Built-in environment variable 
+           # ${CIRCLE_WORKFLOW_ID:0:5} takes the first 5 chars of the variable CIRCLE_CI_WORKFLOW_ID 
+           when: on_fail
+           command: |
+             aws cloudformation delete-stack --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:7}
+
 jobs:
   myjob1:
-      # The primary container, where your job's commands will run
       docker:
         - image: circleci/node:13.8.0
       steps:
@@ -25,14 +36,12 @@ jobs:
                 --template-file template.yml \
                 --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5} \
                 --region us-east-1
-  # Exercise: Config and Deployment
   configure_infrastructure: 
       docker:
         - image: python:3.7-alpine3.11
       steps:
         - checkout
         - add_ssh_keys:
-            # You can get this ID in the section where you registered the SSH Key
             fingerprints: ["aa:fe:55:cb:60:a5:f6:ca:b9:2f:99:c7:70:e8:06:4d"]
         - run:
             name: Install Ansible
@@ -42,7 +51,6 @@ jobs:
             name: Run Playbook and Configure server
             command: |
               ansible-playbook main4.yml -i inventory.txt
-  # Exercise: Smoke Testing
   smoke_test:
       docker:
         - image: alpine:latest
@@ -52,20 +60,41 @@ jobs:
             name: smoke test
             command: |
               URL="https://blog.udacity.com/"
-              # Test if website exists
               if curl -s --head ${URL} 
               then
                 return 0
               else
                 return 1
               fi
+  create_infrastructure: 
+      docker:
+        - image: amazon/aws-cli
+      steps:
+        - checkout
+        - run:
+            name: Create Cloudformation Stack
+            command: |
+              aws cloudformation deploy \
+                --template-file template.yml \
+                --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:7} \
+                --region us-east-1
+  fail_smoke_test:
+      docker:
+        - image: alpine:latest
+      steps:
+        - run:
+            name: Test job
+            # Fail the job intentionally to simulate an error.
+            command:  return 1
+        - destroy_environment  
 
-# Sequential workflow
 workflows:
-  # Name the workflow
   myWorkflow:
     jobs:
       - myjob1
       # - create_infrastructure
       # - configure_infrastructure
-      - smoke_test
+      # - smoke_test
+      - create_infrastructure
+      - fail_smoke_test
+      - delete_environment
