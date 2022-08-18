@@ -86,7 +86,7 @@ jobs:
             name: Test job
             # Fail the job intentionally to simulate an error.
             command:  return 1
-        - destroy_environment  
+        - delete_environment  
 
 workflows:
   myWorkflow:
@@ -97,4 +97,3 @@ workflows:
       # - smoke_test
       - create_infrastructure
       - fail_smoke_test
-      - delete_environment
