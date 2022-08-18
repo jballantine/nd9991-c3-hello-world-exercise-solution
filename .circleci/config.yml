@@ -210,12 +210,13 @@ jobs:
             command: |
               export OldBucketID=$(cat ~/textfile.txt)
               aws s3 rm "s3://${OldBucketID}" --recursive
+              aws cloudformation delete-stack --stack-name production-distro 
               
               
 workflows:
   myWorkflow:
     jobs:
-      # - print_greetings
+      - print_greetings
       # - create_infrastructure1
       # - configure_infrastructure
       # - smoke_test
@@ -223,12 +224,12 @@ workflows:
       # - fail_smoke_test:
       #    requires:
       #      - create_infrastructure2
-      - create_and_deploy_front_end
-      - promote_to_production:
-          requires: 
-            - create_and_deploy_front_end
-      - get_last_deployment_id
-      - clean_up_old_front_end:
-          requires:
-            - get_last_deployment_id
-            - promote_to_production
+      # - create_and_deploy_front_end
+      # - promote_to_production:
+      #    requires: 
+      #       - create_and_deploy_front_end
+      # - get_last_deployment_id
+      # - clean_up_old_front_end:
+      #     requires:
+      #       - get_last_deployment_id
+      #       - promote_to_production
